@@ -1,0 +1,64 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd"> 
+<html> 
+	<head> 
+		<script type="text/javascript" src="strest.js"></script> 
+		<script type="text/javascript" src="http://ajax.googleapis.com/ajax/libs/jquery/1.5.1/jquery.min.js"></script>
+		<script type="text/javascript">
+	
+			function connect() {
+				
+				strest = new Strest(
+							'ws://localhost:8000/websocket',
+							function(event) {
+								alert("Web Socket opened!");
+							},
+							function(event) {
+								alert("Web Socket closed!");
+							}
+						);
+			}
+
+			function send() {
+				console.log(document.getElementById('uri').value);
+
+				var request = new StrestRequest({
+					uri : $('#uri').val()
+				});
+				strest.sendRequest(request, function(response) {
+					showText(response.content);
+
+				});
+			}
+
+			
+			var added = 0;
+			var max = 10; //max elements to show in results box
+			function showText(text) {
+				$('#results').prepend('<div id="result' + added + '">' + text + '</div>');
+				$('#result' + (added - max)).remove();
+				added++;
+			}
+		</script>
+		
+	</head>
+	<body>
+		<b>WEBSOCKET!</b>
+		<button onclick="connect();">CONNECT</button><br />
+		
+		<input type="text" id="uri" value="/hello/world" /> <br />
+		<!-- 
+		<textarea name="socketshit" id="socketshit">
+		
+		
+		</textarea><br />
+		-->
+		<button onclick="send();">SEND</button>
+	
+		<div id="results">
+			
+			
+		
+		
+		</div>
+	</body>
+</html>

@@ -18,7 +18,7 @@ function Strest(url, onopen, onclose) {
 	
 	var self = this;
 	var _onmessage = function(event) {		
-		console.log(event.data);
+		//console.log(event.data);
 		var response = new StrestResponse(event.data);
 		var txnId = response.getHeader('Strest-Txn-Id');
 		var cb = self.callbacks[txnId];
@@ -120,6 +120,7 @@ Strest.prototype.sendRequest = function(request, message_callback, txn_complete_
 	
 	var msg = request.toString();
 	this.socket.send(msg);
+	return request;
 };
 
 Strest.prototype.close = function() {

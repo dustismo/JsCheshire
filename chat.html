@@ -1,0 +1,136 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd"> 
+<html> 
+	<head> 
+		<script type="text/javascript" src="strest.js"></script> 
+		<script type="text/javascript" src="http://ajax.googleapis.com/ajax/libs/jquery/1.5.1/jquery.min.js"></script>
+		<script type="text/javascript">
+	
+			function connect() {
+				strest = new Strest(
+							'ws://localhost:8000/websocket',
+							function(event) {
+								$('#once_connected').fadeIn();
+								$('#disconnect_button').fadeIn();
+								$('#connect_button').fadeOut();
+							},
+							function(event) {
+								$('#connect_button').fadeIn();
+								$('#disconnect_button').fadeOut();
+								$('#once_connected').fadeOut();
+							}
+						);
+			}
+
+			function sendMessage() {
+				//we send the message to another user, ignoring the response.
+				strest.sendRequest({
+					uri : '/chat/send',
+					params : {
+						'username' : $('#send_to').val(),
+						'message' : $('#send_message').val()
+					}
+				});
+			}
+
+			function disconnect() {
+				strest.close();
+			}
+
+			function register() {
+				strest.sendRequest({
+						uri : '/chat/register',
+						params : {
+							'username' : $('#username').val()
+						}
+					},
+					function(response) {
+						$('#once_connected').fadeOut();
+						$('#logged_in').fadeIn();
+
+						//register to recieve messages
+						strest.sendRequest({uri : '/chat/notify/message'},
+								function(response) {
+									var res = jQuery.parseJSON(response.content);
+									$('#messages').append('<div class="message_recieved"><span class="username">' + res.from + '</span><span class="message">' + res.message + '</span></div>');
+								}
+							);
+						//now register for disconnect events!
+						strest.sendRequest({uri : '/chat/notify/disconnect'},
+							function(response) {
+								$('#' + response.content).remove();
+							}
+						);
+						//register for connect events.
+						strest.sendRequest({uri : '/chat/notify/connect'},
+								function(response) {
+									$('#friends').append('<div class="friend" id="' + response.content + '" onclick="$(\'#send_to\').val(\'' + response.content + '\');">' + response.content + '</div>');
+								}
+							);
+					}
+				);
+			}
+			
+			function send() {
+				strest.sendRequest({
+					uri : '/chat/message',
+					params : {
+						'to' : $('#send_to').val(),
+						'message' : $('#send_message').val()
+					}
+				});
+			}
+		</script>
+		
+	</head>
+	<body>
+		<b>Chat Example</b><br />
+		<input type="text" id="websocket_url" value="ws://localhost:8000/websocket" style="width:300px;"></input>
+		
+		<button onclick="connect();" id="connect_button">CONNECT</button><br />
+		<button onclick="disconnect();" id="disconnect_button" style="display:none;">DISCONNECT</button><br />
+		
+		<br />
+
+		<div id="once_connected" style="display:none;"> 
+			<div id="login">
+				USERNAME: <input type="text" id="username"></input> <button onclick="register();">REGISTER</button>
+			</div>
+		</div>
+		
+		<div id="logged_in" style="display:none;">
+			<table>
+				<tr>
+					<td>
+						FRIENDS: <br />
+						<div id="friends">
+						</div>
+					</td>	
+					<td>
+						MESSAGES: <br />
+						<div id="messages">
+							
+						
+						</div>
+					</td>
+					<td>
+						SEND A MESSAGE: <br />
+						TO: <input type="text" id="send_to"></input> <br/>
+						Message: <br /><textarea rows="5" cols="30" id="send_message">
+						</textarea>
+						<button onclick="send();">SEND MESSAGE</button>
+					
+					</td>
+					
+				</tr>
+			
+			</table>
+			
+			
+			<div style="float:right;" >
+			
+			
+			</div>
+			
+		</div>
+	</body>
+</html>

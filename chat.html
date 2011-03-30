@@ -21,21 +21,11 @@
 						);
 			}
 
-			function sendMessage() {
-				//we send the message to another user, ignoring the response.
-				strest.sendRequest({
-					uri : '/chat/send',
-					params : {
-						'username' : $('#send_to').val(),
-						'message' : $('#send_message').val()
-					}
-				});
-			}
-
 			function disconnect() {
 				strest.close();
 			}
 
+			var username = ""; //global reference to my username
 			function register() {
 				strest.sendRequest({
 						uri : '/chat/register',
@@ -46,30 +36,37 @@
 					function(response) {
 						$('#once_connected').fadeOut();
 						$('#logged_in').fadeIn();
-
-						//register to recieve messages
-						strest.sendRequest({uri : '/chat/notify/message'},
-								function(response) {
-									var res = jQuery.parseJSON(response.content);
-									$('#messages').append('<div class="message_recieved"><span class="username">' + res.from + '</span><span class="message">' + res.message + '</span></div>');
-								}
-							);
-						//now register for disconnect events!
-						strest.sendRequest({uri : '/chat/notify/disconnect'},
-							function(response) {
-								$('#' + response.content).remove();
-							}
-						);
-						//register for connect events.
-						strest.sendRequest({uri : '/chat/notify/connect'},
-								function(response) {
-									$('#friends').append('<div class="friend" id="' + response.content + '" onclick="$(\'#send_to\').val(\'' + response.content + '\');">' + response.content + '</div>');
-								}
-							);
+						onRegister();
 					}
 				);
+				username = $('#username').val();
 			}
-			
+			/* called once the user is registered */
+			function onRegister() {
+				//register to recieve messages
+				strest.sendRequest({uri : '/chat/notify/message'},
+						function(response) {
+							var res = jQuery.parseJSON(response.content);
+							$('#messages').prepend('<div class="message_recieved"><span class="username">' + res.from + '</span><span class="message">' + res.message + '</span></div>');
+						}
+					);
+				//register for disconnect events
+				strest.sendRequest({uri : '/chat/notify/disconnect'},
+					function(response) {
+						$('#' + response.content).remove();
+					}
+				);
+				//register for connect events.
+				strest.sendRequest({uri : '/chat/notify/connect'},
+						function(response) {
+							$('#friends').append('<div class="friend" id="' + response.content + '" onclick="$(\'#send_to\').val(\'' + response.content + '\');">' + response.content + '</div>');
+						}
+					);
+			}
+
+			/**
+			 * sends a message from the form
+			 */
 			function send() {
 				strest.sendRequest({
 					uri : '/chat/message',
@@ -78,9 +75,38 @@
 						'message' : $('#send_message').val()
 					}
 				});
+				$('#messages').prepend('<div class="message_sent"><span class="username">' + username + '</span><span class="message">' + $('#send_message').val() + '</span></div>');
+				$('#send_message').val("");
+				$('#send_to').val("")
+				
 			}
 		</script>
-		
+		<style>
+			
+			#messages, #friends, #message_form {
+				height : 400px;
+				overflow : auto;
+			}
+			.message_sent {
+				padding : 5px;
+				margin : 5px;
+				background-color:#eeeeff;
+				border:1px dashed black;
+			}
+			.message_recieved {
+				padding : 5px;
+				margin : 5px;
+				background-color:#eeddff;
+				border:1px dashed black;
+			}
+			.username {
+				display : block;
+				font-style:italic;
+			}
+			
+			
+			
+		</style>
 	</head>
 	<body>
 		<b>Chat Example</b><br />
@@ -97,15 +123,15 @@
 			</div>
 		</div>
 		
-		<div id="logged_in" style="display:none;">
-			<table>
+		<div id="logged_in" style="display:non;">
+			<table style="width:80%">
 				<tr>
 					<td>
 						FRIENDS: <br />
 						<div id="friends">
 						</div>
 					</td>	
-					<td>
+					<td  style="min-width:200px;">
 						MESSAGES: <br />
 						<div id="messages">
 							
@@ -114,11 +140,12 @@
 					</td>
 					<td>
 						SEND A MESSAGE: <br />
-						TO: <input type="text" id="send_to"></input> <br/>
-						Message: <br /><textarea rows="5" cols="30" id="send_message">
-						</textarea>
-						<button onclick="send();">SEND MESSAGE</button>
-					
+						<div id="message_form">
+							TO: <input type="text" id="send_to"></input> <br/>
+							Message: <br /><textarea rows="5" cols="30" id="send_message">
+							</textarea>
+							<button onclick="send();">SEND MESSAGE</button>
+						</div>
 					</td>
 					
 				</tr>

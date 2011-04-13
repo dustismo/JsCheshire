@@ -8,7 +8,7 @@
 			function connect() {
 				
 				strest = new Strest(
-							'ws://localhost:8000/websocket',
+							$('#websocket_url').val(),
 							function(event) {
 								$('#not_connected').fadeOut();
 								$('#connected').fadeIn();
@@ -91,7 +91,7 @@
 	<body>
 		<b>WEBSOCKET Example</b>
 		<div id="not_connected">
-			<input type="text" value="ws://localhost:8000/websocket"></input>
+			<input type="text" id="websocket_url" value="ws://localhost:8000/websocket"></input>
 			<button onclick="connect();">CONNECT</button><br />
 			
 		</div>

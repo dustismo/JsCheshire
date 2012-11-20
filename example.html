@@ -27,7 +27,6 @@
 				var request = strest.sendRequest({uri : $('#uri').val(), method : 'GET'}, 
 						function(response) {
 							addText('#response', '<div class="response">' + response.toString().replace(/\n/g, '<br />') + '</div>');
-							addText('#content', '<div class="content">' + response.content.replace(/\n/g, '<br />') + '</div>');
 						}
 				);
 
@@ -102,13 +101,6 @@
 			<button onclick="disconnect();">DISCONNECT</button><br />
 			<table style="width:80%">
 				<tr>
-					<td>
-						<h1>Response Content</h1>
-						<div id="content">
-						
-						
-						</div>
-					</td>
 					<td>
 						<h1>Response Raw</h1>
 						<div id="response">

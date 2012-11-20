@@ -20,7 +20,7 @@ function Strest(url, onopen, onclose) {
 	var _onmessage = function(event) {		
 		//console.log(event.data);
 		var response = new StrestResponse(event.data);
-		var txnId = response.getHeader('Strest-Txn-Id');
+		var txnId = response.getHeader('txn.id');
 		var cb = self.callbacks[txnId];
 		if (!cb) {
 			console.log("ERROR: No callback registered for : " + response);
@@ -29,7 +29,7 @@ function Strest(url, onopen, onclose) {
 		if (cb['onmessage']) {
 			cb.onmessage(response);
 		}
-		if ('complete' == response.getHeader('Strest-Txn-Status')) {
+		if ('complete' == response.getHeader('txn.status')) {
 			if (cb['ontxncomplete']) {
 				cb.ontxncomplete(txnId);
 			}
@@ -78,8 +78,8 @@ function Strest(url, onopen, onclose) {
  * 
  */
 Strest._txnId = 0;
-Strest.userAgent = "JsStrest 1.0";
-Strest.protocol = "STREST/0.1";
+Strest.userAgent = "JsStrest 2.0";
+Strest.protocol = "2";
 Strest.txnId = function() {
 	return Strest._txnId++;
 };
@@ -105,14 +105,12 @@ Strest.prototype.sendRequest = function(request, message_callback, txn_complete_
 	}
 	
 	
-	request.setHeaderIfAbsent('User-Agent', Strest.userAgent);
-	request.setHeaderIfAbsent('Strest-Txn-id', Strest.txnId());
-	request.setHeaderIfAbsent('Strest-Txn-Accept', 'multi');
-	if (request.content) {
-		request.setHeaderIfAbsent('Content-Length', request.content.length);
-	}
+	request.setHeaderIfAbsent('user-agent', Strest.userAgent);
+	request.setHeaderIfAbsent('txn.id', Strest.txnId());
+	request.setHeaderIfAbsent('txn.accept', 'multi');
+	
 	//register the callbacks
-	this.callbacks[request.getHeader('Strest-Txn-Id')] = {
+	this.callbacks[request.getHeader('txn.id')] = {
 			'onmessage' : message_callback,
 			'ontxncomplete' : txn_complete_callback,
 			'onerror' : error_callback
@@ -137,40 +135,51 @@ Strest.prototype.connected = function() {
 };
 
 function StrestMessage() {
-	this.headers = {};
-	this.content = null;
+	this.strest = {};
+	this.strest.txn = {};
 };
 
 /**
- * Base class for both StrestRequest and StrestResponse
+ * Set a field in the request.  honors the dot operator
+
  * @param key
  * @param value
  * @return
  */
 StrestMessage.prototype.setHeader = function(key, value) {
-	this.headers[StrestMessage.normalizeHeaderName(key)] = Strest.trim(value);
-};
-StrestMessage.prototype.setHeaderIfAbsent = function(key, value) {
-	var nm = StrestMessage.normalizeHeaderName(key);
-	if (this.headers[nm]) {
-		return;
+	var keys = key.split('.')
+	var d = this['strest'];
+	for (var i = 0, len = keys.length; i < len; i++) {
+		var k = keys[i];
+		d[k] = {};
+		if (i == keys.length-1) {
+			d[k] = value;
+		} else {
+			d[k] = {};
+			d = d[k];	
+		}
 	}
-	this.headers[nm] = Strest.trim(value);
+};
+
+StrestMessage.prototype.setHeaderIfAbsent = function(key, value) {
+	var v = this.getHeader(key);
+	if (v != null)
+		return v;
+	this.setHeader(key, value);
 };
 
 StrestMessage.prototype.getHeader = function(key) {
-	return this.headers[key]
+	var keys = key.split('.');
+	var d = this['strest'];
+	for (var i = 0, len = keys.length; i < len; i++) {
+		var k = keys[i];
+		d = d[k];
+		if (i == keys.length-1) {
+			return d;
+		}
+	}
+	return null;
 };
-
-/**
- * Converts a name to Http-Header-Case.
- * @param name
- * @return
- */
-StrestMessage.normalizeHeaderName = function(name) {
-	return Strest.trim(name.replace(/\-/g, ' ').replace( /(^|\s)([a-z])/g , function(m,p1,p2){ return p1+p2.toUpperCase(); } ).replace(/\s+/g, '-'));
-};
-
 
 StrestRequest.prototype = new StrestMessage;
 StrestRequest.prototype.constructor = StrestRequest;
@@ -190,61 +199,23 @@ StrestRequest.prototype.constructor = StrestRequest;
  */
 function StrestRequest(options) {
 	StrestMessage.call(this);
-	this.method = "GET";
-	this.headers = {};
-	this.uri = "/";
-	this.content = null;
-	this.params = null;
-	if (options['method']) {
-		this.method = options.method;
-	}
-	if (options['headers']) {
-		this.headers = options.headers;
-	}
-	if (options['uri']) {
-		this.uri = options.uri;
-	}
-	if (options['content']) {
-		this.content = options.content;
-	}
-	if (options['params']) {
-		this.params = options['params'];
-	}
+
+	this.setHeader('method', options['method']);
+	this.setHeader('v', Strest.protocol);
+	this.setHeader('user-agent', Strest.userAgent);
+	this.setHeader('uri', options['uri']);
+	this.setHeader('params', options['params']);
 };
+
 StrestRequest.prototype.setUri = function(uri) {
-	this.uri = uri;
+	this.setHeader('uri', uri);
 };
 StrestRequest.prototype.setMethod = function(method) {
-	this.method = method;
+	this.setHeader('method', method);
 };
 
 StrestRequest.prototype.toString = function() {
-//	GET /firehose STREST/0.1
-//	Strest-Txn-Accept: multi
-//	Content-Length: 0
-//	Strest-Txn-Id: 0
-	
-	//add params to the uri\
-	var uri = this.uri;
-	if (this.params) {
-		if (uri.indexOf('?') == -1) {
-			uri += '?';
-		} else {
-			uri += '&';
-		}
-		uri += Strest.urlEncodeParams(this.params);
-	}
-	
-	var val = this.method + ' ' + uri + ' ' + Strest.protocol + '\r\n';
-	
-	for (key in this.headers) {
-		val += key + ": " + this.headers[key] + '\r\n';
-	}
-	val += '\r\n';
-	if (this.content) {
-		val += content;
-	}
-	return val;
+	JSON.stringify(this);
 };
 
 
@@ -257,31 +228,11 @@ StrestResponse.prototype.constructor = StrestResponse;
  */
 function StrestResponse(msg) {
 	StrestMessage.call(this);
-	var ind = msg.indexOf('\r\n\r\n');
-	var headerStr = msg.substring(0, ind);
-	var content = msg.substring(ind + 4, msg.length);
-	
-	//parse the headers.
-//	STREST/0.1 200 OK
-//	Strest-Txn-Id: 1
-//	Content-Type: text/plain
-//	Content-Length: 11
-//	Strest-Txn-Status: complete
-//
-//	Hello JERK!
-	var lines = headerStr.split('\r\n');
-	var line1 = lines.shift().split(' ');
-	this.protocol = line1.shift();
-	this.code = line1.shift();
-	this.message = line1.join(' ');
-	
-	for (var i=0; i < lines.length; i++) {
-		var ln = lines[i].split(':');
-		this.setHeader(ln[0], ln[1]);
-	}
-	
-	this.content = content;
 	this.originalText = msg;
+	var tmp = JSON.parse(msg)
+	for (key in tmp) {
+		this[key] = tmp[key]
+	}
 };
 
 StrestResponse.prototype.toString = function() {
@@ -313,21 +264,5 @@ Strest.trim = function(str) {
 			break;
 		}
 	}
-	return str;
-};
-
-
-Strest.urlEncodeParams = function(params) {
-	//urlEncode the params..
-	if (!params) {
-		return params;
-	}
-	
-	var str = '';
-	for (param in params) {
-		str += encodeURIComponent(param) + '=' + encodeURIComponent(params[param]) + '&';
-	}
-	//strip the trailing &
-	str = str.substring(0, str.length-1);
 	return str;
 };

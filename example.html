@@ -24,7 +24,7 @@
 			}
 			
 			function send() {
-				var request = strest.sendRequest({uri : $('#uri').val()}, 
+				var request = strest.sendRequest({uri : $('#uri').val(), method : 'GET'}, 
 						function(response) {
 							addText('#response', '<div class="response">' + response.toString().replace(/\n/g, '<br />') + '</div>');
 							addText('#content', '<div class="content">' + response.content.replace(/\n/g, '<br />') + '</div>');
@@ -96,7 +96,7 @@
 			
 		</div>
 		<div id="connected" style="display:none;">
-			<input type="text" id="uri" value="/firehose" /> 
+			<input type="text" id="uri" value="/ping" /> 
 			<button onclick="send();">SEND</button>
 			<br />
 			<button onclick="disconnect();">DISCONNECT</button><br />

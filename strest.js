@@ -108,7 +108,7 @@ Strest.prototype.sendRequest = function(request, message_callback, txn_complete_
 	request.setHeaderIfAbsent('user-agent', Strest.userAgent);
 	request.setHeaderIfAbsent('txn.id', Strest.txnId());
 	request.setHeaderIfAbsent('txn.accept', 'multi');
-	
+	console.log(request)
 	//register the callbacks
 	this.callbacks[request.getHeader('txn.id')] = {
 			'onmessage' : message_callback,
@@ -151,20 +151,24 @@ StrestMessage.prototype.setHeader = function(key, value) {
 	var d = this['strest'];
 	for (var i = 0, len = keys.length; i < len; i++) {
 		var k = keys[i];
-		d[k] = {};
 		if (i == keys.length-1) {
 			d[k] = value;
 		} else {
-			d[k] = {};
+			if (!d[k]) {
+				d[k] = {};	
+			}
 			d = d[k];	
 		}
 	}
+	console.log(this);
 };
 
 StrestMessage.prototype.setHeaderIfAbsent = function(key, value) {
 	var v = this.getHeader(key);
-	if (v != null)
+	if (v != null) {
+		console.log("v isn't null! " + v);
 		return v;
+	}
 	this.setHeader(key, value);
 };
 
@@ -199,12 +203,14 @@ StrestRequest.prototype.constructor = StrestRequest;
  */
 function StrestRequest(options) {
 	StrestMessage.call(this);
-
+	console.log(options);
 	this.setHeader('method', options['method']);
 	this.setHeader('v', Strest.protocol);
 	this.setHeader('user-agent', Strest.userAgent);
 	this.setHeader('uri', options['uri']);
 	this.setHeader('params', options['params']);
+
+	console.log(this);
 };
 
 StrestRequest.prototype.setUri = function(uri) {
@@ -215,7 +221,7 @@ StrestRequest.prototype.setMethod = function(method) {
 };
 
 StrestRequest.prototype.toString = function() {
-	JSON.stringify(this);
+	return JSON.stringify(this);
 };
 
 

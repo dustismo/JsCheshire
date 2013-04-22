@@ -104,7 +104,7 @@ Strest.prototype.sendRequest = function(request, message_callback, txn_complete_
 		request = new StrestRequest(request);
 	}
 	
-	
+	request.setHeaderIfAbsent('method', 'GET');
 	request.setHeaderIfAbsent('user-agent', Strest.userAgent);
 	request.setHeaderIfAbsent('txn.id', Strest.txnId());
 	request.setHeaderIfAbsent('txn.accept', 'multi');
@@ -160,13 +160,11 @@ StrestMessage.prototype.setHeader = function(key, value) {
 			d = d[k];	
 		}
 	}
-	console.log(this);
 };
 
 StrestMessage.prototype.setHeaderIfAbsent = function(key, value) {
 	var v = this.getHeader(key);
 	if (v != null) {
-		console.log("v isn't null! " + v);
 		return v;
 	}
 	this.setHeader(key, value);
@@ -203,14 +201,14 @@ StrestRequest.prototype.constructor = StrestRequest;
  */
 function StrestRequest(options) {
 	StrestMessage.call(this);
-	console.log(options);
+	// console.log(options);
 	this.setHeader('method', options['method']);
 	this.setHeader('v', Strest.protocol);
 	this.setHeader('user-agent', Strest.userAgent);
 	this.setHeader('uri', options['uri']);
 	this.setHeader('params', options['params']);
 
-	console.log(this);
+	// console.log(this);
 };
 
 StrestRequest.prototype.setUri = function(uri) {

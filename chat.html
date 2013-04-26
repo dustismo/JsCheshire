@@ -6,19 +6,19 @@
 		<script type="text/javascript">
 	
 			function connect() {
-				strest = new Strest(
-							$('#websocket_url').val(),
-							function(event) {
+				strest = new Strest({
+							url : $('#websocket_url').val(),
+							onopen : function(event) {
 								$('#once_connected').fadeIn();
 								$('#disconnect_button').fadeIn();
 								$('#connect_button').fadeOut();
 							},
-							function(event) {
+							onclose : function(event) {
 								$('#connect_button').fadeIn();
 								$('#disconnect_button').fadeOut();
 								$('#once_connected').fadeOut();
 							}
-						);
+						});
 			}
 
 			function disconnect() {

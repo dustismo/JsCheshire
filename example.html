@@ -7,16 +7,16 @@
 	
 			function connect() {
 				
-				strest = new Strest(
-							$('#websocket_url').val(),
-							function(event) {
+				strest = new Strest({
+							url : $('#websocket_url').val(),
+							onopen : function(event) {
 								$('#not_connected').fadeOut();
 								$('#connected').fadeIn();
 							},
-							function(event) {
+							onclose: function(event) {
 								$('#not_connected').fadeIn();
 							}
-						);
+						});
 			}
 
 			function disconnect() {

@@ -5,19 +5,41 @@
  * 
  * 
  * 
- * @param url
- * @param onopen
- * @param onclose
  * @return
  */
 
 
-function Strest(url, onopen, onclose) {
+function Strest(config) {
+
+	this.config = $.extend({
+		//The url to connect to
+		url : "Connectionurl",
+		//called when the connection is closed
+		onclose : function(event) {
+
+		},
+		//called when the connection is opened
+		onopen : function(event) {
+
+		},
+		//will attempt to keep the connection live
+		//will attempt to reconnect if the connection 
+		// is broken.  onclose, onopen will still be
+		// called on reconnect
+		keepalive : true,
+		//the endpoint to use for keep alives
+		//endpoint only needs to return a 200 strest packet
+		ping : "/ping"
+	}, config)
+
 	//callbacks keyed by transactionId
 	this.callbacks = {};
-	
+
+	this.pingTimer = null
+	this.reconnectTimer = null
+
 	var self = this;
-	var _onmessage = function(event) {		
+	this._onmessage = function(event) {		
 		//console.log(event.data);
 		var response = new StrestResponse(event.data);
 		var txnId = response.getHeader('txn.id');
@@ -37,7 +59,7 @@ function Strest(url, onopen, onclose) {
 		}
 	};
 	
-	var _onclose = function(event) {
+	this._onclose = function(event) {
 		//iterate over all the waiting callbacks and send the error
 		for (var k in self.callbacks) {
 			var cb = self.callbacks[k];
@@ -46,30 +68,62 @@ function Strest(url, onopen, onclose) {
 			}
 		}
 		self.callbacks = {};
-		if (onclose) {
-			onclose(event);
+		if (self.pingTimer) {
+			clearInterval(self.pingTimer)
+			self.pingTimer = null
+		}
+		if (self.config.onclose) {
+			self.config.onclose(event);
+		}
+
+		if (self.config.keepalive) {
+			if (self.reconnectTimer) {
+				clearInterval(self.reconnectTimer)
+			}
+			self.reconnectTimer = setInterval(function() {
+				console.log("reconnect attempt");
+				self.connect();
+			}, 4000)
 		}
 	};
 	
-	var _onopen = function(event) {
-		if (onopen) {
-			onopen(event);
+	this._onopen = function(event) {
+		//clear the reconnect timer
+		if (self.reconnectTimer) {
+			clearInterval(self.reconnectTimer)
+		}
+
+		//start ping timer.
+		if (self.config.keepalive && self.config.ping) {
+			//this should never be, but best to be extra safe
+			if (self.pingTimer) {
+				clearInterval(self.pingTimer)
+				self.pingTimer = null
+			}
+			self.pingTimer = setInterval(function() {
+				self.sendRequest({
+                    uri : self.config.ping
+                  },
+                  function(response) {},
+                  function(txnId) {},
+                  function(error) {
+                  	//ping error
+                  	console.log("Ping error!", error)
+                  	self.close()
+                  }
+                );
+			}, 20000)
+		}
+
+		if (self.config.onopen) {
+			self.config.onopen(event);
 		}
 	};
 	
-	var _onerror = function(event) {
+	this._onerror = function(event) {
 		self.close();
 	};
 	
-	//initialize the websocket
-	if (window.WebSocket) {
-		this.socket = new WebSocket(url);
-		this.socket.onmessage = _onmessage;
-		this.socket.onopen = _onopen;
-		this.socket.onclose = _onclose;
-	} else {
-	  alert("Your browser does not support Web Socket.");
-	}	
 	
 }
 
@@ -84,15 +138,46 @@ Strest.txnId = function() {
 	return Strest._txnId++;
 };
 
+Strest.prototype.close = function() {
+	if (this.connected()) {
+		this.socket.close();
+	}
+};
+
+//connect to the websocket
+Strest.prototype.connect = function() {
+	if (this.connected()) {
+		console.log("already connected")
+		return;
+	}
+	//initialize the websocket
+	if (window.WebSocket) {
+		this.socket = new WebSocket(this.config.url);
+		this.socket.onmessage = this._onmessage;
+		this.socket.onopen = this._onopen;
+		this.socket.onclose = this._onclose;
+	} else {
+	  alert("Your browser does not support Web Socket.");
+	}
+};
+
+
+Strest.prototype.connected = function() {
+	if (!this.socket) {
+		return false;
+	}
+	return this.socket.readyState == WebSocket.OPEN;	
+};
+
 /**
  * Sends a request.  
  * 
  * 
  * 
  * @param request
- * @param message_callback
- * @param txn_end_callback
- * @param error_callback
+ * @param message_callback(response)
+ * @param txn_end_callback(txnId)
+ * @param error_callback(error)
  * @return
  */
 Strest.prototype.sendRequest = function(request, message_callback, txn_complete_callback, error_callback) {
@@ -108,7 +193,6 @@ Strest.prototype.sendRequest = function(request, message_callback, txn_complete_
 	request.setHeaderIfAbsent('user-agent', Strest.userAgent);
 	request.setHeaderIfAbsent('txn.id', Strest.txnId());
 	request.setHeaderIfAbsent('txn.accept', 'multi');
-	console.log(request)
 	//register the callbacks
 	this.callbacks[request.getHeader('txn.id')] = {
 			'onmessage' : message_callback,
@@ -121,18 +205,7 @@ Strest.prototype.sendRequest = function(request, message_callback, txn_complete_
 	return request;
 };
 
-Strest.prototype.close = function() {
-	if (this.connected()) {
-		this.socket.close();
-	}
-};
 
-Strest.prototype.connected = function() {
-	if (!this.socket) {
-		return false;
-	}
-	return this.socket.readyState == WebSocket.OPEN;	
-};
 
 function StrestMessage() {
 	this.strest = {};

@@ -10,3 +10,7 @@ This client is meant for clientside strest connections.  (for the serverside jav
 
 
 
+## Server Implementations
+
+https://github.com/dustismo/cheshire
+
